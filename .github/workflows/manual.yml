@@ -1,0 +1,56 @@
+name: Manual workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'New Project Name (artifactId)'
+        required: true
+        type: string
+      package_name:
+        description: 'New Java Package (e.g., com.company.mynewservice)'
+        required: true
+        type: string
+
+jobs:
+  rename_project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install xmlstarlet
+        run: sudo apt-get install -y xmlstarlet
+
+      - name: Replace artifactId in pom.xml
+        run: |
+          xmlstarlet ed --inplace -u "//_:project/_:artifactId[not(../_:parent)]" -v "${{ inputs.project_name }}" pom.xml
+
+      - name: Replace package names in Java files
+        run: |
+          find src/main/java -type f -name "*.java" -exec sed -i "s|package com.example.demo|package ${{ inputs.package_name }}|g" {} +
+          find src/test/java -type f -name "*.java" -exec sed -i "s|package com.example.demo|package ${{ inputs.package_name }}|g" {} +
+
+      - name: Rename package directories
+        run: |
+          OLD_PACKAGE_PATH="src/main/java/com/example/demo"
+          NEW_PACKAGE_PATH="src/main/java/$(echo "${{ inputs.package_name }}" | tr '.' '/')"
+          if [ -d "$OLD_PACKAGE_PATH" ]; then
+            mkdir -p $(dirname "$NEW_PACKAGE_PATH")
+            mv "$OLD_PACKAGE_PATH" "$NEW_PACKAGE_PATH"
+          fi
+          
+          OLD_TEST_PACKAGE_PATH="src/test/java/com/example/demo"
+          NEW_TEST_PACKAGE_PATH="src/test/java/$(echo "${{ inputs.package_name }}" | tr '.' '/')"
+          if [ -d "$OLD_TEST_PACKAGE_PATH" ]; then
+            mkdir -p $(dirname "$NEW_TEST_PACKAGE_PATH")
+            mv "$OLD_TEST_PACKAGE_PATH" "$NEW_TEST_PACKAGE_PATH"
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "Renamed project to ${{ inputs.project_name }} and updated package structure"
+          git push
