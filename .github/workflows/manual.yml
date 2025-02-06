@@ -53,4 +53,7 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git add .
           git commit -m "Renamed project to ${{ inputs.project_name }} and updated package structure"
-          git push
+          git push https://x-access-token:${{ secrets.PAT }}@github.com/bagscripts/YOUR_REPO.git HEAD:main
+
+          
+        
